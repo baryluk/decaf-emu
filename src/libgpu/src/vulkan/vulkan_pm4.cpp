@@ -469,13 +469,66 @@ Driver::setPredication(const latte::pm4::SetPredication &data)
 void
 Driver::streamOutBaseUpdate(const latte::pm4::StreamOutBaseUpdate &data)
 {
-   decaf_abort("Unsupported pm4 streamOutBaseUpdate");
+   // This is ignored as we don't need to do anything special when the base is
+   // updated.  Instead we detect that the buffer registers have changed and
+   // use that as the indication to switch.
 }
 
 void
 Driver::streamOutBufferUpdate(const latte::pm4::StreamOutBufferUpdate &data)
 {
-   decaf_abort("Unsupported pm4 streamOutBufferUpdate");
+   auto bufferIdx = data.control.SELECT_BUFFER();
+
+   if (data.control.STORE_BUFFER_FILLED_SIZE()) {
+      auto stream = mStreamContextData[bufferIdx];
+
+      decaf_check(data.dstLo);
+      decaf_check(stream);
+
+      // Write 0 into the streamout counter...
+      auto soBufferSizePtr = phys_cast<uint32_t*>(data.dstLo).getRawPointer();
+      *soBufferSizePtr = 0;
+
+      // Grab the memory cache object for the destination
+      auto memCache = getDataMemCache(data.dstLo, 4);
+
+      // Transition the cache to being a write target, this will cause it to write-back
+      // to the GPU whenever this Pm4 Context is completed (or if its needed).
+      transitionMemCache(memCache, ResourceUsage::StreamOutCounterWrite);
+
+      // Copy the pointer from our local stream-out buffers into the user supplied region
+      vk::BufferCopy copyRegion(0, 0, 4);
+      mActiveCommandBuffer.copyBuffer(stream->buffer, memCache->buffer, { copyRegion });
+   }
+
+   StreamContextObject *newStreamOut = nullptr;
+   if (data.control.OFFSET_SOURCE() == STRMOUT_OFFSET_SOURCE::STRMOUT_OFFSET_FROM_MEM) {
+      auto srcPtr = phys_cast<uint32_t*>(data.srcLo);
+      decaf_check(srcPtr);
+      newStreamOut = allocateStreamContext(*srcPtr);
+   } else if (data.control.OFFSET_SOURCE() == STRMOUT_OFFSET_SOURCE::STRMOUT_OFFSET_FROM_PACKET) {
+      auto offset = static_cast<uint32_t>(data.srcLo);
+      newStreamOut = allocateStreamContext(offset);
+   } else if (data.control.OFFSET_SOURCE() == STRMOUT_OFFSET_SOURCE::STRMOUT_OFFSET_NONE) {
+      // Nothing to do here, as they didn't want to load the offset from anywhere...
+   } else {
+      decaf_abort("Unexpected offset source during stream out buffer update");
+   }
+
+   if (newStreamOut) {
+      auto oldStreamOut = mStreamContextData[bufferIdx];
+      mStreamContextData[bufferIdx] = newStreamOut;
+
+      if (oldStreamOut) {
+         // We have to defer the destruction of this buffer until the end of
+         // the current context or we may destroy it while a pending read is
+         // in the contexts callback list.
+
+         addRetireTask([=](){
+            releaseStreamContext(oldStreamOut);
+         });
+      }
+   }
 }
 
 void

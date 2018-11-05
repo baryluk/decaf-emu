@@ -70,6 +70,7 @@ struct VertexShaderDesc : public ShaderDesc
    gsl::span<const uint8_t> fsBinary;
    std::array<latte::SQ_TEX_DIM, latte::MaxTextures> texDims;
    std::array<bool, latte::MaxTextures> texIsUint;
+   std::array<uint32_t, latte::MaxStreamOutBuffers> streamOutStride;
    std::array<uint32_t, 2> instanceStepRates;
    bool generateRectStub;
 
@@ -87,6 +88,7 @@ struct VertexShaderDesc : public ShaderDesc
       {
          std::array<latte::SQ_TEX_DIM, latte::MaxTextures> texDims;
          std::array<bool, latte::MaxTextures> texIsUint;
+         std::array<uint32_t, latte::MaxStreamOutBuffers> streamOutStride;
          std::array<uint32_t, 2> instanceStepRates;
          bool generateRectStub;
       } _dataHash;
@@ -94,6 +96,7 @@ struct VertexShaderDesc : public ShaderDesc
 
       _dataHash.texDims = texDims;
       _dataHash.texIsUint = texIsUint;
+      _dataHash.streamOutStride = streamOutStride;
       _dataHash.instanceStepRates = instanceStepRates;
       _dataHash.generateRectStub = generateRectStub;
 
@@ -128,11 +131,13 @@ struct GeometryShaderDesc : public ShaderDesc
       {
          std::array<latte::SQ_TEX_DIM, latte::MaxTextures> texDims;
          std::array<bool, latte::MaxTextures> texIsUint;
+         std::array<uint32_t, latte::MaxStreamOutBuffers> streamOutStride;
       } _dataHash;
       memset(&_dataHash, 0xFF, sizeof(_dataHash));
 
       _dataHash.texDims = texDims;
       _dataHash.texIsUint = texIsUint;
+      _dataHash.streamOutStride = streamOutStride;
 
       return ShaderDesc::hash()
          .write(dcBinary.data(), dcBinary.size())
