@@ -85,8 +85,8 @@ Driver::checkCurrentTexture(ShaderStage shaderStage, uint32_t textureIdx)
    auto textureDesc = getTextureDesc(shaderStage, textureIdx);
    if (!textureDesc.surfaceDesc.surfaceDesc.baseAddress) {
       // TODO: I'm not sure if ignoring this is the right answer, but lets try...
-      mCurrentTextures[int(shaderStage)][textureIdx] = nullptr;
-      return false;
+      mCurrentTextures[int(shaderStage)][textureIdx] = &mEmptySurfaceView;
+      return true;
    }
 
    auto surface = getSurfaceView(textureDesc.surfaceDesc);
@@ -116,7 +116,7 @@ Driver::prepareCurrentTextures()
    for (auto shaderStage = 0u; shaderStage < 3u; ++shaderStage) {
       for (auto i = 0u; i < latte::MaxTextures; ++i) {
          auto& surface = mCurrentTextures[shaderStage][i];
-         if (surface) {
+         if (surface && surface != &mEmptySurfaceView) {
             transitionSurfaceView(surface, ResourceUsage::Texture, vk::ImageLayout::eShaderReadOnlyOptimal);
          }
       }

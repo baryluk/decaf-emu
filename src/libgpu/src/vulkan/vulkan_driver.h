@@ -952,6 +952,8 @@ private:
 
    std::vector<MemChangeRecord> mDirtyMemCaches;
 
+   SurfaceViewObject mEmptySurfaceView;
+
    std::vector<uint8_t> mScratchRetiling;
    std::vector<uint8_t> mScratchIdxSwap;
    std::vector<uint8_t> mScratchIdxDequad;

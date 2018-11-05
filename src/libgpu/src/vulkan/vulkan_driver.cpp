@@ -154,6 +154,41 @@ Driver::initialise(vk::PhysicalDevice physDevice, vk::Device device, vk::Queue q
    pipelineLayoutDesc.pushConstantRangeCount = static_cast<uint32_t>(pushConstants.size());
    pipelineLayoutDesc.pPushConstantRanges = pushConstants.data();
    mPipelineLayout = mDevice.createPipelineLayout(pipelineLayoutDesc);
+
+   // Create a random image to use for sampling
+   vk::ImageCreateInfo createImageDesc;
+   createImageDesc.imageType = vk::ImageType::e2D;
+   createImageDesc.format = vk::Format::eR8G8B8A8Snorm;
+   createImageDesc.extent = vk::Extent3D(1, 1, 1);
+   createImageDesc.mipLevels = 1;
+   createImageDesc.arrayLayers = 1;
+   createImageDesc.samples = vk::SampleCountFlagBits::e1;
+   createImageDesc.tiling = vk::ImageTiling::eOptimal;
+   createImageDesc.usage = vk::ImageUsageFlagBits::eSampled;
+   createImageDesc.sharingMode = vk::SharingMode::eExclusive;
+   createImageDesc.initialLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
+   auto emptyImage = mDevice.createImage(createImageDesc);
+
+   setVkObjectName(emptyImage, "EmptySurface");
+
+   auto imageMemReqs = mDevice.getImageMemoryRequirements(emptyImage);
+
+   vk::MemoryAllocateInfo allocDesc;
+   allocDesc.allocationSize = imageMemReqs.size;
+   allocDesc.memoryTypeIndex = findMemoryType(imageMemReqs.memoryTypeBits, vk::MemoryPropertyFlagBits::eDeviceLocal);
+   auto imageMem = mDevice.allocateMemory(allocDesc);
+
+   mDevice.bindImageMemory(emptyImage, imageMem, 0);
+
+   vk::ImageViewCreateInfo imageViewDesc;
+   imageViewDesc.image = emptyImage;
+   imageViewDesc.viewType = vk::ImageViewType::e2D;
+   imageViewDesc.format = vk::Format::eR8G8B8A8Snorm;
+   imageViewDesc.components = vk::ComponentMapping();
+   imageViewDesc.subresourceRange = { vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1 };
+   auto imageView = mDevice.createImageView(imageViewDesc);
+
+   mEmptySurfaceView.imageView = imageView;
 }
 
 vk::DescriptorPool
