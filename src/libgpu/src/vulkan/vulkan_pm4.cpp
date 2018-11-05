@@ -84,11 +84,15 @@ Driver::decafCopyColorToScan(const latte::pm4::DecafCopyColorToScan &data)
 
    transitionSurface(surface, ResourceUsage::TransferSrc, vk::ImageLayout::eTransferSrcOptimal, { 0, 1 });
 
+   // TODO: Handle TV/DRC scaling, something to do with AVMSetTVScale/AVMSetDRCScale
+   auto copyWidth = std::min(target->desc.width, surface->desc.width);
+   auto copyHeight = std::min(target->desc.height, surface->desc.height);
+
    vk::ImageBlit blitRegion(
       vk::ImageSubresourceLayers(vk::ImageAspectFlagBits::eColor, 0, 0, 1),
-      { vk::Offset3D(0, 0, 0), vk::Offset3D(surface->desc.width, surface->desc.height, 1) },
+      { vk::Offset3D(0, 0, 0), vk::Offset3D(copyWidth, copyHeight, 1) },
       vk::ImageSubresourceLayers(vk::ImageAspectFlagBits::eColor, 0, 0, 1),
-      { vk::Offset3D(0, 0, 0), vk::Offset3D(target->desc.width, target->desc.height, 1) });
+      { vk::Offset3D(0, 0, 0), vk::Offset3D(copyWidth, copyHeight, 1) });
 
    mActiveCommandBuffer.blitImage(
       surface->image,
